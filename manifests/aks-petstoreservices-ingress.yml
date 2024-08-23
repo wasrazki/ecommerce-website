@@ -19,7 +19,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: aks-petstoreproductservice
+            name: aks-petstoreserviceproduct
             port:
               number: 80
       - path: /petstoreorderservice
