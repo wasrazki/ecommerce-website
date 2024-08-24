@@ -23,8 +23,7 @@ variables:
 
 stages:
 - stage: Build
-  displayName: Build 
-  
+  displayName: Build   
   jobs:
   - job: Build
     displayName: Build
@@ -33,7 +32,6 @@ stages:
       demands:
         - agent.name -equals 'MyAgent' 
     steps:
-
     - script: echo -n -e "{\"version\":\"$(Build.BuildNumber) - $(tag)\"}" > petstore/petstorepetservice/src/main/resources/version.json 
     
 
