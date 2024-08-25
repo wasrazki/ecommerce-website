@@ -45,3 +45,41 @@ stages:
         tags: |
           $(tag)
           latest
+
+- stage: Deploy
+  displayName: Deploy Stage
+  dependsOn: Build 
+  variables:
+    acrsecret: secret 
+
+  jobs:
+    - deployment: Deploy
+      displayName: Deploying the Pet Service Microservice to AKS Cluster
+      pool:
+        name: 'MyAgentPool' 
+        demands:
+          - agent.name -equals MyAgent 
+      environment: 'DEV'
+      strategy:
+       runOnce:
+         deploy:
+           steps:
+           - task: KubernetesManifest@1
+             inputs:
+               action: 'createSecret'
+               connectionType: 'kubernetesServiceConnection'
+               kubernetesServiceConnection: 'aks-azure-devops-connection'
+               namespace: 'ingress-petstoreservices'
+               secretType: 'dockerRegistry'
+               secretName: '$(acrsecret)'
+               dockerRegistryEndpoint: 'acr-azure-devops-connection' 
+            
+           - task: KubernetesManifest@1
+             inputs:
+                action: 'deploy'
+                connectionType: 'kubernetesServiceConnection'
+                kubernetesServiceConnection: 'aks-azure-devops-connection'
+                namespace: 'ingress-petstoreservices'
+                manifests: '$(Pipeline.Workspace)/s/petstore/petstorepetservice/aks-petstorepetservice.yml'
+                imagePullSecrets: '$(acrsecret)'
+             
