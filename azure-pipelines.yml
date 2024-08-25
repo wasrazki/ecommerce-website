@@ -1,0 +1,44 @@
+# Docker
+# Build a Docker image
+# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+
+trigger:
+  branches:
+    include:
+     - main
+  paths:
+    include:
+      - petstore/petstoreproductservice/*
+
+resources:
+- repo: self
+
+variables:
+  imageRepository: 'petstoreserviceproduct'
+  containerRegistry: 'mypetstoreecr.azurecr.io'
+  dockerfilePath: 'petstore/petstoreproductservice/Dockerfile'
+  tag: '$(Build.BuildId)'
+
+stages:
+- stage: Build
+  displayName: Build image
+  jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      name: 'MyAgentPool'
+      demands:
+        - agent.name -equals MyAgent
+    steps:
+    - script: echo -n -e "{\"version\":\"$(Build.BuildNumber) - $(tag)\"}" > petstore/petstoreproductservice/src/main/resources/version.json
+
+    - task: Docker@2
+      displayName: Build an image and Push to ACR
+      inputs:
+        containerRegistry: 'acr-azure-devops-connection'
+        repository: '$(imageRepository)'
+        command: 'buildAndPush'
+        Dockerfile: '$(dockerfilePath)'
+        tags: |
+          $(tag)
+          latest
