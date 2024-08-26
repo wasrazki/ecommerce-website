@@ -1,0 +1,82 @@
+# Docker
+# Build a Docker image
+# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - petstore/petstoreorderservice/*
+
+resources:
+- repo: self
+
+variables:
+  imageRepository: 'petstoreorderservice'
+  containerRegistry: 'mypetstoreecr.azurecr.io'
+  dockerfilePath: 'petstore/petstoreorderservice/Dockerfile'
+  tag: '$(Build.BuildId)'
+
+stages:
+- stage: Build
+  displayName: Build image
+  jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      name: 'MyAgentPool'
+      demands:
+        - agent.name -equals MyAgent
+    steps:
+    - script:  echo -n -e "{\"version\":\"$(Build.BuildNumber) - $(tag)\"}" > petstore/petstoreorderservice/src/main/resources/version.json
+
+    - task: Docker@2
+      displayName: Build an image
+      inputs:
+        containerRegistry: 'acr-azure-devops-connection'
+        repository: '$(imageRepository)'
+        command: 'buildAndPush'
+        Dockerfile: '$(dockerfilePath)'
+        tags: |
+          $(tag)
+          latest
+
+- stage: Deploy
+  displayName: Deploy Stage
+  dependsOn: Build 
+  variables:
+    acrsecret: secret 
+
+  jobs:
+    - deployment: Deploy
+      displayName: Deploying the Order Service Microservice to AKS Cluster
+      pool:
+        name: 'MyAgentPool' 
+        demands:
+          - agent.name -equals MyAgent 
+      environment: 'DEV'
+      strategy:
+       runOnce:
+         deploy:
+           steps:
+           - task: KubernetesManifest@1
+             inputs:
+               action: 'createSecret'
+               connectionType: 'kubernetesServiceConnection'
+               kubernetesServiceConnection: 'aks-azure-devops-connection'
+               namespace: 'ingress-petstoreservices'
+               secretType: 'dockerRegistry'
+               secretName: '$(acrsecret)'
+               dockerRegistryEndpoint: 'acr-azure-devops-connection' 
+            
+           - task: KubernetesManifest@1
+             inputs:
+                action: 'deploy'
+                connectionType: 'kubernetesServiceConnection'
+                kubernetesServiceConnection: 'aks-azure-devops-connection'
+                namespace: 'ingress-petstoreservices'
+                manifests: '$(Pipeline.Workspace)/s/petstore/petstoreorderservice/aks-petstoreorderservice.yml'
+                imagePullSecrets: '$(acrsecret)'
+             
