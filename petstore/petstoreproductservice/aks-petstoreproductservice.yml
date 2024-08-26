@@ -20,6 +20,14 @@ spec:
         env:
         - name: PETSTOREPRODUCTSERVICE_SERVER_PORT
           value: "80"
+        - name: spring.config.name
+          value: application_with_everything_enabled
+        - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: aisecretkey
+              key: secret
+        
 ---
 apiVersion: v1
 kind: Service
